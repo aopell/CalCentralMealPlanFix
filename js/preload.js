@@ -37,11 +37,11 @@ function createElement(tag, classList, properties, children) {
 
 function finances() {
     log("Running finances function");
+    if(document.querySelector(".meal-plan-info-added")) return;
     debitTransactions = [];
     mealSwipeTransactions = [];
     flexTransactions = [];
     mealPlanType = "Meal Plan";
-    finances = undefined;
     fetch("https://services.housing.berkeley.edu/c1c/dyn/login.asp?view=CD").then(response => {
         fetch("https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full").then(response => response.text()).then(text => {
             let tempdiv = document.createElement("div");
@@ -154,9 +154,11 @@ function finances() {
                         "Your current balance:",
                         `$${flexBalance}`,
                         "View Transactions",
-                        "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50"
+                        "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50",
+                        "View flex dollar transaction history"
                     )
                 );
+                cal1List.parentElement.parentElement.appendChild(createElement("span", ["meal-plan-info-added"], { style: "visibility: 'hidden'" }));
             })
         })
     });
