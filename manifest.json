@@ -1,0 +1,40 @@
+{
+    "manifest_version": 2,
+    "name": "CalCentral Meal Plan Fix",
+    "short_name": "CalCentral Meal Plan Fix",
+    "description": "Restores meal plan information to CalCentral",
+    "version": "1.0",
+    "icons": {
+        "192": "imgs/icon@192.png"
+    },
+    "permissions": [
+        "*://*.berkeley.edu/*",
+        "activeTab",
+        "storage",
+        "alarms",
+        "notifications"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://calcentral.berkeley.edu/*"
+            ],
+            "css": [
+                "css/all.css"
+            ],
+            "js": [
+                "js/preload.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://calcentral.berkeley.edu/*"
+            ],
+            "js": [
+                "js/idle.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ]
+}
