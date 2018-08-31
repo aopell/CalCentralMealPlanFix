@@ -33,6 +33,17 @@ function createElement(tag, classList, properties, children) {
     return element;
 }
 
+function createContainer(title, subtitle, value, linkText, linkDestination, linkHover) {
+    return createElement("li", ["cc-clearfix-container"], {}, [
+        createElement("div", ["cc-cal1card-header"], {}, [
+            createElement("strong", [], { textContent: title })
+        ]),
+        createElement("div", ["cc-cal1card-yourbalance"], { textContent: subtitle }),
+        createElement("span", ["cc-left", "cc-cal1card-amount", "ng-binding"], { textContent: value }),
+        createElement(linkDestination ? "a" : "span", ["cc-right", "cc-outbound-link"], { href: linkDestination, textContent: linkText, target: "_blank", title: linkHover })
+    ]);
+}
+
 function finances(runAgain = true) {
     console.debug("[CCI] Running finances function");
     if (document.querySelector(".meal-plan-info-added")) return;
@@ -40,7 +51,6 @@ function finances(runAgain = true) {
     mealSwipeTransactions = [];
     flexTransactions = [];
     mealPlanType = "Meal Plan";
-    let err = false;
     fetch("https://services.housing.berkeley.edu/c1c/dyn/login.asp?view=CD").then(response => {
         fetch("https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full").then(response => response.text()).then(text => {
             let tempdiv = document.createElement("div");
@@ -119,17 +129,6 @@ function finances(runAgain = true) {
 
                     let swipesThisWeek = mealSwipeTransactions.filter(x => x.date > sunday);
 
-                    function createContainer(title, subtitle, value, linkText, linkDestination, linkHover) {
-                        return createElement("li", ["cc-clearfix-container"], {}, [
-                            createElement("div", ["cc-cal1card-header"], {}, [
-                                createElement("strong", [], { textContent: title })
-                            ]),
-                            createElement("div", ["cc-cal1card-yourbalance"], { textContent: subtitle }),
-                            createElement("span", ["cc-left", "cc-cal1card-amount", "ng-binding"], { textContent: value }),
-                            createElement(linkDestination ? "a" : "span", ["cc-right", "cc-outbound-link"], { href: linkDestination, textContent: linkText, target: "_blank", title: linkHover })
-                        ]);
-                    }
-
                     // log(swipesThisWeek);
                     let cal1List = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope > div:nth-child(2) > div > div:nth-child(2) > ul");
                     cal1List.removeChild(cal1List.lastElementChild);
@@ -155,22 +154,21 @@ function finances(runAgain = true) {
                     );
                     cal1List.parentElement.parentElement.appendChild(createElement("span", ["meal-plan-info-added"], { style: "visibility: 'hidden'" }));
                 }
-                catch {
-                    err = true;
-                    return;
+                catch (ex) {
+                    if (runAgain) {
+                        console.warn("[CCI] Caught error, retrying. Error below:");
+                        console.warn(ex);
+                        setTimeout(()=> {
+                            finances(false);
+                        }, 2000);
+                    } else {
+                        log("Second failure, aborting");
+                        console.error(ex);
+                        let cal1List = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope > div:nth-child(2) > div > div:nth-child(2) > ul");
+                        cal1List.appendChild(createContainer("Authenticate to Show Meal Plan", "You must authenticate with CalDining and reload to see meal plan info", " ", "Authenticate", "https://services.housing.berkeley.edu/c1c/dyn/login.asp", "Click to authenticate with CalDining"))
+                    }
                 }
             })
         })
     });
-
-    if (err) {
-        if (runAgain) {
-            console.warn("[CCI] Caught error, retrying. Error below:");
-            console.warn(err);
-            finances(false);
-        } else {
-            log("Second failure, aborting");
-            console.error(err);
-        }
-    }
 }
