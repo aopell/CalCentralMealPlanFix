@@ -137,9 +137,9 @@ function finances(runAgain = true) {
                             mealPlanType,
                             `Available meal swipes for week of ${sunday.getMonth() + 1}/${sunday.getDate()}:`,
                             mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
-                            `${swipesThisWeek.length} swipes used this week`,
+                            `${swipesThisWeek.length} swipe${swipesThisWeek.length != 1 ? "s" : ""} used this week`,
                             "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb",
-                            swipesThisWeek.reverse().reduce((a, b) => a + `${b.date.getMonth() + 1}/${b.date.getDate()} ${b.date.getHours() == 12 ? 12 : b.date.getHours() % 12}:${b.date.getMinutes()} ${b.date.getHours() / 12 >= 1 ? "PM" : "AM"} - ${b.location}\n`, "")
+                            swipesThisWeek.reverse().reduce((a, b) => a + `${b.date.getMonth() + 1}/${b.date.getDate()} ${b.date.getHours() == 12 ? 12 : b.date.getHours() % 12}:${b.date.getMinutes() < 10 ? "0" : ""}${b.date.getMinutes()} ${b.date.getHours() / 12 >= 1 ? "PM" : "AM"} - ${b.location}\n`, "")
                         )
                     );
                     cal1List.appendChild(
@@ -158,7 +158,7 @@ function finances(runAgain = true) {
                     if (runAgain) {
                         console.warn("[CCI] Caught error, retrying. Error below:");
                         console.warn(ex);
-                        setTimeout(()=> {
+                        setTimeout(() => {
                             finances(false);
                         }, 2000);
                     } else {

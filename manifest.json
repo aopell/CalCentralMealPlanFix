@@ -3,7 +3,7 @@
     "name": "CalCentral Meal Plan Fix",
     "short_name": "CalCentral Meal Plan Fix",
     "description": "Restores meal plan information to CalCentral",
-    "version": "1.0",
+    "version": "1.1",
     "icons": {
         "192": "imgs/icon@192.png"
     },
@@ -35,6 +35,15 @@
                 "js/idle.js"
             ],
             "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb"
+            ],
+            "js": [
+                "js/bal.js"
+            ],
+            "run_at": "document_end"
         }
     ]
 }
