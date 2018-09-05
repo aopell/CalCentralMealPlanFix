@@ -139,7 +139,7 @@ function finances(runAgain = true) {
                             mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
                             `${swipesThisWeek.length} swipe${swipesThisWeek.length != 1 ? "s" : ""} used this week`,
                             "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb",
-                            swipesThisWeek.reverse().reduce((a, b) => a + `${b.date.getMonth() + 1}/${b.date.getDate()} ${b.date.getHours() == 12 ? 12 : b.date.getHours() % 12}:${b.date.getMinutes() < 10 ? "0" : ""}${b.date.getMinutes()} ${b.date.getHours() / 12 >= 1 ? "PM" : "AM"} - ${b.location}\n`, "")
+                            swipesThisWeek.reverse().reduce((a, b) => a + `${b.date.getMonth() + 1}/${b.date.getDate()} ${b.date.getHours() == 12 ? 12 : b.date.getHours() % 12}:${b.date.getMinutes() < 10 ? "0" : ""}${b.date.getMinutes()} ${b.date.getHours() / 12 >= 1 ? "PM" : "AM"} - ${getMeal(b.date)} @ ${b.location}\n`, "")
                         )
                     );
                     cal1List.appendChild(
@@ -171,4 +171,12 @@ function finances(runAgain = true) {
             })
         })
     });
+
+    function getMeal(date) {
+        if (date.getDay() % 6) { // Weekday
+            return date.getHours() >= 16 ? "Dinner" : (date.getHours() >= 10 ? "Lunch" : "Breakfast");
+        } else { // Weekend
+            return date.getHours() >= 16 ? "Dinner" : "Brunch";
+        }
+    }
 }
