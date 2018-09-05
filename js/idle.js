@@ -1,7 +1,11 @@
-setTimeout(() => {
-    document.querySelector('a[href="/finances"]').addEventListener("click", finances);
+let interval = setInterval(() => {
+    let link = document.querySelector('a[href="/finances"]');
+    if (link) {
+        link.addEventListener("click", finances);
 
-    if(location.href.endsWith("/finances")) {
-        finances();
+        if (location.href.endsWith("/finances")) {
+            finances();
+        }
+        clearInterval(interval);
     }
 }, 500);
