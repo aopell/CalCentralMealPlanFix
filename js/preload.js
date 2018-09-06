@@ -146,7 +146,7 @@ function finances(runAgain = true) {
                         createContainer(
                             "Meal Plan Flex Dollars",
                             "Your current balance:",
-                            `$${flexBalance}`,
+                            `$${flexBalance}${flexBalance.split('.').length > 1 && flexBalance.split('.')[1].length == 1 ? "0" : ""}`,
                             "View Transactions",
                             "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50",
                             "View flex dollar transaction history"
