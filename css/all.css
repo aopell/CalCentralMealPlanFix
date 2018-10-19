@@ -6,7 +6,8 @@
 }
 
 #debit-link, #flex-link, #meal-link {
-    padding: 8px 0 0;
+    margin-top: -8px;
+    text-align: right;
 }
 
 .cc-cal1card .cc-clearfix-container {
