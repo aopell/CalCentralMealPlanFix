@@ -1,3 +1,26 @@
-.cc-cal1card .cc-widget-list li span.cc-right {
+.cc-cal1card-amount {
+    font-size: 18px;
+    color: green;
+    font-weight: bold;
+    padding-bottom: 3px;
+}
+
+#debit-link, #flex-link, #meal-link {
     padding: 8px 0 0;
+}
+
+.cc-cal1card .cc-clearfix-container {
+    margin: 5px 0;
+}
+
+.cc-cal1card .cc-clearfix-container::before {
+    padding: 2px !important;
+}
+
+.cc-cal1card ul {
+    padding-bottom: 10px;
+}
+
+.cc-cal1card ul li a span {
+    padding-bottom: 5px;
 }

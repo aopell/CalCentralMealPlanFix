@@ -1,5 +1,4 @@
 // CalDining version
-
 let table = document.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table") || document.querySelector("body > div > div.container.clearfix > div > div > div > div.col3 > div > table")
 
 let swipes = Array.from(table.rows).map(x => x.cells[0]).filter(x => !!Date.parse(x.textContent) && Date.parse(x.textContent) > new Date(Date.now() - new Date().getDay() * 86400000).setHours(0, 0, 0, 0)).length

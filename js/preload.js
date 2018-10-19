@@ -44,6 +44,19 @@ function createContainer(title, subtitle, value, linkText, linkDestination, link
     ]);
 }
 
+function createCal1CardWidget({ debitBalance, debitSummary, flexBalance, flexSummary, mealPlanName, mealBalance, mealSummary, usedSwipes }) {
+    let sunday = new Date();
+    sunday.setDate(sunday.getDate() - sunday.getDay());
+    sunday.setHours(0, 0, 0, 0);
+    let e = document.createElement("div");
+    e.innerHTML = `<div class="cc-cal1card cc-widget"><div class="cc-cal1card-logo cc-widget-title"><h2 class=cc-left>Cal 1 Card</h2><a class="cc-right cc-button cc-widget-title-button ng-scope"href=http://cal1card.berkeley.edu>Manage Card</a></div><div data-cc-spinner-directive><ul class=cc-widget-list><li class=cc-clearfix-container><div><div class=cc-cal1card-header><strong>Debit Account Balance</strong></div><span class="cc-left cc-cal1card-amount">$${debitBalance}</span> <a class=cc-right href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=c1c"id=debit-link>View Debit Transactions</a></div><li class=cc-clearfix-container><div><div class=cc-cal1card-header><strong>Flex Dollars Balance</strong></div><span class="cc-left cc-cal1card-amount">$${flexBalance}</span> <a class=cc-right href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50"id=flex-link>View Flex Dollar Transactions</a></div><li class=cc-clearfix-container><div><div class=cc-cal1card-header><strong>${mealPlanName} Balance</strong></div><span class="cc-left cc-cal1card-amount">${mealBalance} <span style=font-size:12px>swipes</span></span> <a class=cc-right href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb"id=meal-link>${usedSwipes} swipes used this week</a></div><li></ul></div></div>`;
+    e = e.firstElementChild;
+    e.querySelector("#debit-link").title = debitSummary;
+    e.querySelector("#flex-link").title = flexSummary;
+    e.querySelector("#meal-link").title = mealSummary;
+    return e;
+}
+
 function finances(runAgain = true) {
     console.debug("[CCI] Running finances function");
     if (document.querySelector(".meal-plan-info-added")) return;
@@ -63,6 +76,7 @@ function finances(runAgain = true) {
 
                     let table = tempdiv.firstElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody");
                     let flexBalance = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(7) > td:nth-child(1) > b").textContent;
+                    let debitBalance = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(5) > td:nth-child(1) > b").textContent;
 
                     let section = 0;
 
@@ -84,7 +98,7 @@ function finances(runAgain = true) {
                                     date: new Date(Date.parse(row.children[0].textContent)),
                                     amount: (() => {
                                         let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                        return result[2] * (result[1] ? 1 : -1);
+                                        return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
                                     })(),
                                     balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
                                     location: row.children[3].textContent
@@ -108,7 +122,7 @@ function finances(runAgain = true) {
                                     date: new Date(Date.parse(row.children[0].textContent)),
                                     amount: (() => {
                                         let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                        return result[2] * (result[1] ? 1 : -1);
+                                        return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
                                     })(),
                                     balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
                                     location: row.children[3].textContent
@@ -124,35 +138,28 @@ function finances(runAgain = true) {
                     let sunday = new Date();
                     sunday.setDate(sunday.getDate() - sunday.getDay());
                     sunday.setHours(0, 0, 0, 0);
+                    let nextSaturday = new Date(sunday.valueOf());
+                    nextSaturday.setDate(nextSaturday.getDate() + 6);
                     let nextSunday = new Date(sunday.valueOf());
                     nextSunday.setDate(nextSunday.getDate() + 7);
 
                     let swipesThisWeek = mealSwipeTransactions.filter(x => x.date > sunday);
+                    let debitThisWeek = debitTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
+                    let flexThisWeek = flexTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
 
-                    // log(swipesThisWeek);
-                    let cal1List = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope > div:nth-child(2) > div > div:nth-child(2) > ul");
-                    cal1List.removeChild(cal1List.lastElementChild);
-                    cal1List.appendChild(
-                        createContainer(
-                            mealPlanType,
-                            `Available meal swipes for week of ${sunday.getMonth() + 1}/${sunday.getDate()}:`,
-                            mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
-                            `${swipesThisWeek.length} swipe${swipesThisWeek.length != 1 ? "s" : ""} used this week`,
-                            "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb",
-                            swipesThisWeek.reverse().reduce((a, b) => a + `${b.date.getMonth() + 1}/${b.date.getDate()} ${b.date.getHours() == 12 ? 12 : b.date.getHours() % 12}:${b.date.getMinutes() < 10 ? "0" : ""}${b.date.getMinutes()} ${b.date.getHours() / 12 >= 1 ? "PM" : "AM"} - ${getMeal(b.date)} @ ${b.location}\n`, "")
-                        )
-                    );
-                    cal1List.appendChild(
-                        createContainer(
-                            "Meal Plan Flex Dollars",
-                            "Your current balance:",
-                            `$${flexBalance}${flexBalance.split('.').length > 1 && flexBalance.split('.')[1].length == 1 ? "0" : ""}`,
-                            "View Transactions",
-                            "https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50",
-                            "View flex dollar transaction history"
-                        )
-                    );
-                    cal1List.parentElement.parentElement.appendChild(createElement("span", ["meal-plan-info-added"], { style: "visibility: 'hidden'" }));
+                    let widget = createCal1CardWidget({
+                        debitBalance: `${debitBalance}${debitBalance.split('.').length > 1 && debitBalance.split('.')[1].length == 1 ? "0" : ""}`,
+                        flexBalance: `${flexBalance}${flexBalance.split('.').length > 1 && flexBalance.split('.')[1].length == 1 ? "0" : ""}`,
+                        mealBalance: mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
+                        usedSwipes: swipesThisWeek.length,
+                        mealPlanName: mealPlanType,
+                        mealSummary: swipesThisWeek.reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)} - ${getMeal(b.date)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}: ${swipesThisWeek.length} swipes\n`),
+                        debitSummary: debitTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}: ${debitThisWeek > 0 ? '+' : '-'}$${Math.abs(debitThisWeek).toFixed(2)}\n`),
+                        flexSummary: flexTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}: ${flexThisWeek > 0 ? '+' : '-'}$${Math.abs(flexThisWeek).toFixed(2)}\n`)
+                    });
+
+                    let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
+                    col.appendChild(createElement("div", ["ng-scope"], {}, [widget]));
                 }
                 catch (ex) {
                     if (runAgain) {
@@ -178,5 +185,9 @@ function finances(runAgain = true) {
         } else { // Weekend
             return date.getHours() >= 16 ? "Dinner" : "Brunch";
         }
+    }
+
+    function getPrettyDateTimeString(date) {
+        return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours() == 12 ? 12 : date.getHours() % 12}:${date.getMinutes() < 10 ? "0" : ""}${date.getMinutes()} ${date.getHours() / 12 >= 1 ? "PM" : "AM"}`;
     }
 }
