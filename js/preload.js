@@ -33,7 +33,7 @@ function createElement(tag, classList, properties, children) {
     return element;
 }
 
-function createCal1CardWidget({ debitBalance, debitSummary, flexBalance, flexSummary, mealPlanName, mealBalance, mealSummary, usedSwipes, usedFlex, usedDebit }) {
+function createCal1CardWidget({ debitBalance = '', debitSummary = '', flexBalance = '', flexSummary = '', mealPlanName = '', mealBalance = '', mealSummary = '', usedSwipes = '', usedFlex = '', usedDebit = '' } = {}) {
     let sunday = new Date();
     sunday.setDate(sunday.getDate() - sunday.getDay());
     sunday.setHours(0, 0, 0, 0);
