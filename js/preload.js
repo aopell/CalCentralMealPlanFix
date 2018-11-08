@@ -83,15 +83,17 @@ function finances(runAgain = true) {
                                     break;
                                 }
                                 if (row.firstElementChild.tagName == "TH") break;
-                                debitTransactions.push({
-                                    date: new Date(Date.parse(row.children[0].textContent)),
-                                    amount: (() => {
-                                        let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                        return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
-                                    })(),
-                                    balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
-                                    location: row.children[3].textContent
-                                });
+                                try {
+                                    debitTransactions.push({
+                                        date: new Date(Date.parse(row.children[0].textContent)),
+                                        amount: (() => {
+                                            let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
+                                            return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
+                                        })(),
+                                        balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
+                                        location: row.children[3].textContent
+                                    });
+                                } catch (e) { console.warn("Caught error: %o", e) }
                                 break;
                             case 2:
                                 if (row.textContent.match("Flex")) {
@@ -99,23 +101,27 @@ function finances(runAgain = true) {
                                     break;
                                 }
                                 if (row.firstElementChild.tagName == "TH") break;
-                                mealSwipeTransactions.push({
-                                    date: new Date(Date.parse(row.children[0].textContent)),
-                                    swipes: +row.children[1].textContent,
-                                    location: row.children[3].textContent
-                                });
+                                try {
+                                    mealSwipeTransactions.push({
+                                        date: new Date(Date.parse(row.children[0].textContent)),
+                                        swipes: +row.children[1].textContent,
+                                        location: row.children[3].textContent
+                                    });
+                                } catch (e) { console.warn("Caught error: %o", e) }
                                 break;
                             case 3:
                                 if (row.firstElementChild.tagName == "TH") break;
-                                flexTransactions.push({
-                                    date: new Date(Date.parse(row.children[0].textContent)),
-                                    amount: (() => {
-                                        let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                        return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
-                                    })(),
-                                    balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
-                                    location: row.children[3].textContent
-                                });
+                                try {
+                                    flexTransactions.push({
+                                        date: new Date(Date.parse(row.children[0].textContent)),
+                                        amount: (() => {
+                                            let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
+                                            return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
+                                        })(),
+                                        balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
+                                        location: row.children[3].textContent
+                                    });
+                                } catch (e) { console.warn("Caught error: %o", e) }
                                 break;
                         }
                     }
