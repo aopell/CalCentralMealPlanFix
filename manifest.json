@@ -3,7 +3,7 @@
     "name": "CalCentral Meal Plan Fix",
     "short_name": "CalCentral Meal Plan Fix",
     "description": "Restores meal plan information to CalCentral",
-    "version": "1.6.1",
+    "version": "1.6.2",
     "icons": {
         "192": "imgs/icon@192.png"
     },
