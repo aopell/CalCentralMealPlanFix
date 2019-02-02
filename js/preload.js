@@ -46,150 +46,146 @@ function createCal1CardWidget({ debitBalance = '', debitSummary = '', flexBalanc
     return e;
 }
 
-function finances(runAgain = true) {
-    console.debug("[CCI] Running finances function");
+async function finances(runAgain = true) {
     if (document.querySelector(".meal-plan-info-added")) return;
     debitTransactions = [];
     mealSwipeTransactions = [];
     flexTransactions = [];
     mealPlanType = "Meal Plan";
-    fetch("https://services.housing.berkeley.edu/c1c/dyn/login.asp?view=CD").then(response => {
-        fetch("https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full").then(response => response.text()).then(text => {
-            let tempdiv = document.createElement("div");
-            tempdiv.appendChild(document.createElement("div"));
-            tempdiv.firstElementChild.innerHTML = text;
-            fetch("https://services.housing.berkeley.edu/c1c/dyn/balance.asp").then(response => response.text()).then(balText => {
-                try {
-                    tempdiv.appendChild(document.createElement("div"));
-                    tempdiv.lastElementChild.innerHTML = balText;
 
-                    let table = tempdiv.firstElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody");
-                    let flexBalance = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(7) > td:nth-child(1) > b").textContent;
-                    let debitBalance = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(5) > td:nth-child(1) > b").textContent;
+    let tempdiv = document.createElement("div");
+    tempdiv.appendChild(document.createElement("div"));
+    tempdiv.appendChild(document.createElement("div"));
 
-                    let section = 0;
+    // Log in
+    await fetch("https://services.housing.berkeley.edu/c1c/dyn/login.asp?view=CD");
+    let allTransactions = await (await fetch("https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full")).text();
+    let balances = await (await fetch("https://services.housing.berkeley.edu/c1c/dyn/balance.asp")).text();
+    tempdiv.firstElementChild.innerHTML = allTransactions;
+    tempdiv.lastElementChild.innerHTML = balances;
 
-                    for (let row of table.children) {
-                        switch (section) {
-                            case 0:
-                                if (row.textContent.match("Debit")) {
-                                    section = 1;
-                                }
-                                break;
-                            case 1:
-                                if (row.textContent.match("Meal")) {
-                                    section = 2;
-                                    mealPlanType = row.textContent.replace(" Activity", "");
-                                    break;
-                                }
-                                if (row.firstElementChild.tagName == "TH") break;
-                                try {
-                                    debitTransactions.push({
-                                        date: new Date(Date.parse(row.children[0].textContent)),
-                                        amount: (() => {
-                                            let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                            return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
-                                        })(),
-                                        balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
-                                        location: row.children[3].textContent
-                                    });
-                                } catch (e) { console.warn("Caught error: %o", e) }
-                                break;
-                            case 2:
-                                if (row.textContent.match("Flex")) {
-                                    section = 3;
-                                    break;
-                                }
-                                if (row.firstElementChild.tagName == "TH") break;
-                                try {
-                                    mealSwipeTransactions.push({
-                                        date: new Date(Date.parse(row.children[0].textContent)),
-                                        swipes: +row.children[1].textContent,
-                                        location: row.children[3].textContent
-                                    });
-                                } catch (e) { console.warn("Caught error: %o", e) }
-                                break;
-                            case 3:
-                                if (row.firstElementChild.tagName == "TH") break;
-                                try {
-                                    flexTransactions.push({
-                                        date: new Date(Date.parse(row.children[0].textContent)),
-                                        amount: (() => {
-                                            let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                            return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
-                                        })(),
-                                        balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
-                                        location: row.children[3].textContent
-                                    });
-                                } catch (e) { console.warn("Caught error: %o", e) }
-                                break;
-                        }
+    try {
+        let table = tempdiv.firstElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody");
+        let a = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(8) > td:nth-child(1) > b");
+        let b = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(9) > td:nth-child(1) > b");
+        let flexBalance = +a.textContent + +b.textContent;
+        let debitBalance = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(5) > td:nth-child(1) > b").textContent;
+
+        let section = 0;
+
+        for (let row of table.children) {
+            switch (section) {
+                case 0:
+                    if (row.textContent.match("Debit")) {
+                        section = 1;
                     }
-
-                    // log(debitTransactions);
-                    // log(mealSwipeTransactions);
-                    // log(flexTransactions);
-
-                    let sunday = new Date();
-                    sunday.setDate(sunday.getDate() - sunday.getDay());
-                    sunday.setHours(0, 0, 0, 0);
-                    let nextSaturday = new Date(sunday.valueOf());
-                    nextSaturday.setDate(nextSaturday.getDate() + 6);
-                    let nextSunday = new Date(sunday.valueOf());
-                    nextSunday.setDate(nextSunday.getDate() + 7);
-
-                    let swipesThisWeek = mealSwipeTransactions.filter(x => x.date > sunday);
-                    let debitThisWeek = debitTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
-                    let flexThisWeek = flexTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
-
-                    let widget = createCal1CardWidget({
-                        debitBalance: `${debitBalance}${debitBalance.split('.').length > 1 && debitBalance.split('.')[1].length == 1 ? "0" : ""}`,
-                        flexBalance: `${flexBalance}${flexBalance.split('.').length > 1 && flexBalance.split('.')[1].length == 1 ? "0" : ""}`,
-                        mealBalance: mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
-                        mealPlanName: mealPlanType,
-                        mealSummary: swipesThisWeek.reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)} - ${getMeal(b.date)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}: ${swipesThisWeek.length} swipes\n`),
-                        usedSwipes: swipesThisWeek.length,
-                        debitSummary: debitTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}:\n`),
-                        usedDebit: `${debitThisWeek > 0 ? '+' : '-'}$${Math.abs(debitThisWeek).toFixed(2)}`,
-                        flexSummary: flexTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}:\n`),
-                        usedFlex: `${flexThisWeek > 0 ? '+' : '-'}$${Math.abs(flexThisWeek).toFixed(2)}`
-                    });
-
-                    let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
-                    col.appendChild(createElement("div", ["ng-scope"], {}, [widget]));
-                }
-                catch (ex) {
-                    if (runAgain) {
-                        console.warn("[CCI] Caught error, retrying. Error below:");
-                        console.warn(ex);
-                        setTimeout(() => {
-                            finances(false);
-                        }, 2000);
-                    } else {
-                        log("Second failure, aborting");
-                        console.error(ex);
-                        let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
-                        col.appendChild(createElement("div", ["ng-scope"], {}, [createCal1CardWidget()]));
-                        col.querySelector(".cc-cal1card [data-cc-spinner-directive]").outerHTML = "";
-                        let button = col.querySelector(".cc-cal1card .cc-button");
-                        button.textContent = "Show Card Information";
-                        button.href = "https://services.housing.berkeley.edu/c1c/dyn/login.asp";
-                        button.title = "You must authenticate with CalDining and reload to see Cal 1 Card info on CalCentral";
+                    break;
+                case 1:
+                    if (row.textContent.match("Meal")) {
+                        section = 2;
+                        mealPlanType = row.textContent.replace(" Activity", "");
+                        break;
                     }
-                }
-            })
-        })
-    });
+                    if (row.firstElementChild.tagName == "TH") break;
+                    try {
+                        debitTransactions.push({
+                            date: new Date(Date.parse(row.children[0].textContent)),
+                            amount: (() => {
+                                let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
+                                return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
+                            })(),
+                            balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
+                            location: row.children[3].textContent
+                        });
+                    } catch (e) { console.warn("Caught error: %o", e) }
+                    break;
+                case 2:
+                    if (row.textContent.match("Flex")) {
+                        section = 3;
+                        break;
+                    }
+                    if (row.firstElementChild.tagName == "TH") break;
+                    try {
+                        mealSwipeTransactions.push({
+                            date: new Date(Date.parse(row.children[0].textContent)),
+                            swipes: +row.children[1].textContent,
+                            location: row.children[3].textContent
+                        });
+                    } catch (e) { console.warn("Caught error: %o", e) }
+                    break;
+                case 3:
+                    if (row.firstElementChild.tagName == "TH") break;
+                    try {
+                        flexTransactions.push({
+                            date: new Date(Date.parse(row.children[0].textContent)),
+                            amount: (() => {
+                                let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
+                                return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
+                            })(),
+                            balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
+                            location: row.children[3].textContent
+                        });
+                    } catch (e) { console.warn("Caught error: %o", e) }
+                    break;
+            }
+        }
 
-    function getMeal(date) {
-        if (date.getDay() % 6) { // Weekday
-            return date.getHours() >= 16 ? "Dinner" : (date.getHours() >= 10 ? "Lunch" : "Breakfast");
-        } else { // Weekend
-            return date.getHours() >= 16 ? "Dinner" : "Brunch";
+        let sunday = new Date();
+        sunday.setDate(sunday.getDate() - sunday.getDay());
+        sunday.setHours(0, 0, 0, 0);
+        let nextSaturday = new Date(sunday.valueOf());
+        nextSaturday.setDate(nextSaturday.getDate() + 6);
+        let nextSunday = new Date(sunday.valueOf());
+        nextSunday.setDate(nextSunday.getDate() + 7);
+
+        let swipesThisWeek = mealSwipeTransactions.filter(x => x.date > sunday);
+        let debitThisWeek = debitTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
+        let flexThisWeek = flexTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
+
+        let widget = createCal1CardWidget({
+            debitBalance: (+debitBalance).toFixed(2),
+            flexBalance: (+flexBalance).toFixed(2),
+            mealBalance: mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
+            mealPlanName: mealPlanType,
+            mealSummary: swipesThisWeek.reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)} - ${getMeal(b.date)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}: ${swipesThisWeek.length} swipes\n`),
+            usedSwipes: swipesThisWeek.length,
+            debitSummary: debitTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}:\n`),
+            usedDebit: `${debitThisWeek > 0 ? '+' : '-'}$${Math.abs(debitThisWeek).toFixed(2)}`,
+            flexSummary: flexTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}:\n`),
+            usedFlex: `${flexThisWeek > 0 ? '+' : '-'}$${Math.abs(flexThisWeek).toFixed(2)}`
+        });
+
+        let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
+        col.appendChild(createElement("div", ["ng-scope"], {}, [widget]));
+    }
+    catch (ex) {
+        if (runAgain) {
+            console.warn("[CCI] Caught error, retrying. Error:", ex);
+            setTimeout(() => {
+                finances(false);
+            }, 2000);
+        } else {
+            log("Second failure, aborting");
+            console.error(ex);
+            let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
+            col.appendChild(createElement("div", ["ng-scope"], {}, [createCal1CardWidget()]));
+            col.querySelector(".cc-cal1card [data-cc-spinner-directive]").outerHTML = "";
+            let button = col.querySelector(".cc-cal1card .cc-button");
+            button.textContent = "Show Card Information";
+            button.href = "https://services.housing.berkeley.edu/c1c/dyn/login.asp";
+            button.title = "You must authenticate with CalDining and reload to see Cal 1 Card info on CalCentral";
         }
     }
+}
 
-    function getPrettyDateTimeString(date) {
-        return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours() == 12 ? 12 : date.getHours() % 12}:${date.getMinutes() < 10 ? "0" : ""}${date.getMinutes()} ${date.getHours() / 12 >= 1 ? "PM" : "AM"}`;
+function getMeal(date) {
+    if (date.getDay() % 6) { // Weekday
+        return date.getHours() >= 16 ? "Dinner" : (date.getHours() >= 10 ? "Lunch" : "Breakfast");
+    } else { // Weekend
+        return date.getHours() >= 16 ? "Dinner" : "Brunch";
     }
+}
+
+function getPrettyDateTimeString(date) {
+    return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours() == 12 ? 12 : date.getHours() % 12}:${date.getMinutes() < 10 ? "0" : ""}${date.getMinutes()} ${date.getHours() / 12 >= 1 ? "PM" : "AM"}`;
 }

@@ -1,11 +1,11 @@
-let interval = setInterval(() => {
+let interval = setInterval(async () => {
     let link = document.querySelector('a[href="/finances"]');
     if (link) {
-        link.addEventListener("click", finances);
+        clearInterval(interval);
+        link.addEventListener("click", async () => await finances());
 
         if (location.href.endsWith("/finances")) {
-            finances();
+            await finances();
         }
-        clearInterval(interval);
     }
-}, 500);
+}, 1000);
