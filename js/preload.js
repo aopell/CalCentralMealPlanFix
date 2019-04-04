@@ -46,6 +46,38 @@ function createCal1CardWidget({ debitBalance = '', debitSummary = '', flexBalanc
     return e;
 }
 
+function backgroundPageFetch(url, init, bodyReadType) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ type: "fetch", url: url, params: init, bodyReadType: bodyReadType }, function (response) {
+            if (!response.success) {
+                reject(response.error);
+                return;
+            }
+
+            delete response.success;
+
+            let bodyReadError = response.bodyReadError;
+            delete response.bodyReadError;
+
+            let bodyContent = response[bodyReadType];
+            let readBodyTask = new Promise((readBodyResolve, readBodyReject) => {
+                if (bodyReadError) {
+                    if (bodyReadError === true) {
+                        readBodyReject();
+                    } else {
+                        readBodyReject(bodyReadError);
+                    }
+                } else {
+                    readBodyResolve(bodyContent);
+                }
+            });
+            response[bodyReadType] = () => readBodyTask;
+
+            resolve(response);
+        });
+    });
+}
+
 async function finances(runAgain = true) {
     if (document.querySelector(".meal-plan-info-added")) return;
     debitTransactions = [];
@@ -58,11 +90,12 @@ async function finances(runAgain = true) {
     tempdiv.appendChild(document.createElement("div"));
 
     // Log in
-    await fetch("https://services.housing.berkeley.edu/c1c/dyn/login.asp?view=CD");
-    let allTransactions = await (await fetch("https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full")).text();
-    let balances = await (await fetch("https://services.housing.berkeley.edu/c1c/dyn/balance.asp")).text();
+    await backgroundPageFetch("https://services.housing.berkeley.edu/c1c/dyn/login.asp?view=CD", {}, "text");
+    let allTransactions = await (await backgroundPageFetch("https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full", {}, "text")).text();
+    let balances = await (await backgroundPageFetch("https://services.housing.berkeley.edu/c1c/dyn/balance.asp", {}, "text")).text();
     tempdiv.firstElementChild.innerHTML = allTransactions;
     tempdiv.lastElementChild.innerHTML = balances;
+    console.log(tempdiv);
 
     try {
         let table = tempdiv.firstElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody");
