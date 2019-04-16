@@ -33,17 +33,36 @@ function createElement(tag, classList, properties, children) {
     return element;
 }
 
-function createCal1CardWidget({ debitBalance = '', debitSummary = '', flexBalance = '', flexSummary = '', mealPlanName = '', mealBalance = '', mealSummary = '', usedSwipes = '', usedFlex = '', usedDebit = '' } = {}) {
-    let sunday = new Date();
-    sunday.setDate(sunday.getDate() - sunday.getDay());
-    sunday.setHours(0, 0, 0, 0);
-    let e = document.createElement("div");
-    e.innerHTML = `<div class="cc-cal1card cc-widget"><div class="cc-cal1card-logo cc-widget-title"><h2 class="cc-left">Cal 1 Card</h2><a class="cc-right cc-button cc-widget-title-button ng-scope" href="http://cal1card.berkeley.edu">Manage Card</a></div><div data-cc-spinner-directive><ul class="cc-widget-list"><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>Debit Account Balance</strong></div><span class="cc-left cc-cal1card-amount">$${debitBalance}</span><div id="debit-link" class="cc-right"><abbr id="debit-summary">${usedDebit} this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=c1c">View Debit Transactions</a></div></div></li><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>Flex Dollars Balance</strong></div><span class="cc-left cc-cal1card-amount">$${flexBalance}</span><div id="flex-link" class="cc-right"><abbr id="flex-summary">${usedFlex} this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50">View Flex Dollar Transactions</a></div></div></li><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>${mealPlanName} Balance</strong></div><span class="cc-left cc-cal1card-amount">${mealBalance} <span style="font-size:12px">swipes</span></span><div id="meal-link" class="cc-right"><abbr id="meal-summary">${usedSwipes} swipes used this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb">View Meal Swipe History</a></div></div></li><li></li></ul></div></div>`;
-    e = e.firstElementChild;
-    e.querySelector("#debit-summary").title = debitSummary;
-    e.querySelector("#flex-summary").title = flexSummary;
-    e.querySelector("#meal-summary").title = mealSummary;
-    return e;
+class Cal1CardWidget {
+    constructor({ debitBalance = '', debitSummary = '', flexBalance = '', flexSummary = '', mealPlanName = '', mealBalance = '', mealSummary = '', usedSwipes = '', usedFlex = '', usedDebit = '' } = {}) {
+        let sunday = new Date();
+        sunday.setDate(sunday.getDate() - sunday.getDay());
+        sunday.setHours(0, 0, 0, 0);
+        this.element = document.createElement("div");
+        this.element.innerHTML = `<div class="cc-cal1card cc-widget"><div class="cc-cal1card-logo cc-widget-title"><h2 class="cc-left">Cal 1 Card</h2><a class="cc-right cc-button cc-widget-title-button ng-scope" target="_blank" href="http://cal1card.berkeley.edu">Manage Card</a></div><div data-cc-spinner-directive><ul class="cc-widget-list"><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>Debit Account Balance</strong></div><span class="cc-left cc-cal1card-amount">$${debitBalance}</span><div id="debit-link" class="cc-right"><abbr id="debit-summary">${usedDebit} this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=c1c" target="_blank">View Debit Transactions</a></div></div></li><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>Flex Dollars Balance</strong></div><span class="cc-left cc-cal1card-amount">$${flexBalance}</span><div id="flex-link" class="cc-right"><abbr id="flex-summary">${usedFlex} this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50" target="_blank">View Flex Dollar Transactions</a></div></div></li><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>${mealPlanName} Balance</strong></div><span class="cc-left cc-cal1card-amount">${mealBalance} <span style="font-size:12px">swipes</span></span><div id="meal-link" class="cc-right"><abbr id="meal-summary">${usedSwipes} swipes used this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb" target="_blank">View Meal Swipe History</a></div></div></li><li><a style="margin-bottom:-10px;margin-top:-5px;" href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full" target="_blank">View all transactions in the last 365 days </a></li></ul></div></div>`;
+        this.element = this.element.firstElementChild;
+        this.element.querySelector("#debit-summary").title = debitSummary;
+        this.element.querySelector("#flex-summary").title = flexSummary;
+        this.element.querySelector("#meal-summary").title = mealSummary;
+    }
+
+    static createEmpty() {
+        let widget = new Cal1CardWidget();
+
+        widget.element.querySelector(".cc-cal1card [data-cc-spinner-directive]").outerHTML = "";
+        let button = widget.element.querySelector(".cc-cal1card .cc-button");
+        button.textContent = "Show Card Information";
+        button.href = "https://services.housing.berkeley.edu/c1c/dyn/login.asp";
+        button.title = "You must authenticate with CalDining and reload to see Cal 1 Card info on CalCentral";
+        button.addEventListener(e => {
+            setTimeout(() => {
+                widget.outerHTML = "";
+                finances();
+            }, 5000);
+        });
+
+        return widget;
+    }
 }
 
 function backgroundPageFetch(url, init, bodyReadType) {
@@ -95,14 +114,20 @@ async function finances(runAgain = true) {
     let balances = await (await backgroundPageFetch("https://services.housing.berkeley.edu/c1c/dyn/balance.asp", {}, "text")).text();
     tempdiv.firstElementChild.innerHTML = allTransactions;
     tempdiv.lastElementChild.innerHTML = balances;
-    console.log(tempdiv);
 
     try {
         let table = tempdiv.firstElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody");
-        let a = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(8) > td:nth-child(1) > b");
-        let b = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(9) > td:nth-child(1) > b");
-        let flexBalance = +a.textContent + +b.textContent;
-        let debitBalance = tempdiv.lastElementChild.querySelector("#content_window > table > tbody > tr > td:nth-child(2) > table > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(5) > td:nth-child(1) > b").textContent;
+
+        let flexBalance = 0;
+        let debitBalance = 0;
+        for (let row of Array.from(tempdiv.lastElementChild.querySelectorAll("table table table tr>td:first-child")).filter(x => x.children.length > 0)) {
+            let text = row.textContent.toLowerCase();
+            if (text.includes("cal 1 card debit")) {
+                debitBalance += Number.parseFloat(text.match(/:\D*(\d+(\.\d{1,2})?)/)[1]);
+            } else if (text.includes("flex")) {
+                flexBalance += Number.parseFloat(text.match(/\d+(\.\d{1,2})?/)[0]);
+            }
+        }
 
         let section = 0;
 
@@ -175,7 +200,7 @@ async function finances(runAgain = true) {
         let debitThisWeek = debitTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
         let flexThisWeek = flexTransactions.filter(x => x.date > sunday).reduce((a, b) => a + Number.parseFloat(b.amount), 0);
 
-        let widget = createCal1CardWidget({
+        let widget = new Cal1CardWidget({
             debitBalance: (+debitBalance).toFixed(2),
             flexBalance: (+flexBalance).toFixed(2),
             mealBalance: mealPlanType.toLocaleLowerCase().includes("blue") ? (12 - swipesThisWeek.length) : "Unlimited",
@@ -189,7 +214,7 @@ async function finances(runAgain = true) {
         });
 
         let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
-        col.appendChild(createElement("div", ["ng-scope"], {}, [widget]));
+        col.appendChild(createElement("div", ["ng-scope"], {}, [widget.element]));
     }
     catch (ex) {
         if (runAgain) {
@@ -201,12 +226,8 @@ async function finances(runAgain = true) {
             log("Second failure, aborting");
             console.error(ex);
             let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
-            col.appendChild(createElement("div", ["ng-scope"], {}, [createCal1CardWidget()]));
-            col.querySelector(".cc-cal1card [data-cc-spinner-directive]").outerHTML = "";
-            let button = col.querySelector(".cc-cal1card .cc-button");
-            button.textContent = "Show Card Information";
-            button.href = "https://services.housing.berkeley.edu/c1c/dyn/login.asp";
-            button.title = "You must authenticate with CalDining and reload to see Cal 1 Card info on CalCentral";
+            let widget = Cal1CardWidget.createEmpty();
+            col.appendChild(createElement("div", ["ng-scope"], {}, [widget.element]));
         }
     }
 }
