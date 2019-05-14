@@ -29,7 +29,10 @@
                 "css/all.css"
             ],
             "js": [
-                "js/preload.js"
+                "js/widget-template.js",
+                "js/preload.js",
+                "js/Chart.min.js",
+                "js/stats.js"
             ],
             "run_at": "document_start"
         },

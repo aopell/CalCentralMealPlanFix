@@ -1,0 +1,346 @@
+function closeOverlay() {
+    document.getElementById("overlay").style.display = "none";
+}
+
+function showOverlay(data) {
+    var __chartColors = {};
+    const CHART_TYPES = Number.MAX_SAFE_INTEGER;
+
+    initialize();
+
+    function initialize() {
+        if(document.getElementById("overlay")) {
+            document.getElementById("overlay").style.display = "unset";
+            return;
+        }
+
+        let style = document.createElement("style");
+        style.textContent = `
+        #overlay {
+            font-family: sans-serif !important;
+            background-color: white !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            z-index: 10000;
+        }
+
+        #overlay h1 {
+            margin-top: 0;
+        }
+
+        #container div {
+            display: block;
+            border: 1px solid black;
+            padding: 20px;
+            margin: 10px;
+        }
+
+        #close-button {
+            float: right;
+        }
+        `;
+        document.head.appendChild(style);
+
+        processData();
+    }
+
+    function createWeeklyData(transactions, labelProp, valueProp) {
+        let sorted = transactions.sort((a, b) => a.date > b.date ? 1 : -1);
+        let weekLabels = new Set();
+        let data = {};
+        for (let tran of sorted) {
+            if (!(tran[labelProp] in data)) {
+                data[tran[labelProp]] = {};
+            }
+
+            let week = getWeekDetails(tran.date);
+            weekLabels.add(week.description);
+
+            if (week.description in data[tran[labelProp]]) {
+                data[tran[labelProp]][week.description] += Math.abs(+tran[valueProp]);
+            } else {
+                data[tran[labelProp]][week.description] = Math.abs(+tran[valueProp]);
+            }
+        }
+        return { data, weekLabels: Array.from(weekLabels) };
+    }
+
+    function makeDatasetsFromWeeklyData(elem, weeklyData) {
+        let ds = [];
+        for (let loc in weeklyData.data) {
+            ds.push({
+                data: weeklyData.weekLabels.map(week => weeklyData.data[loc][week] || 0),
+                label: loc,
+                backgroundColor: ctx => chartColor(ctx.chart.id % CHART_TYPES, ctx.datasetIndex),
+                hoverBackgroundColor: ctx => chartColor(ctx.chart.id % CHART_TYPES, ctx.datasetIndex)
+            });
+        }
+
+        return {
+            datasets: ds,
+            labels: weeklyData.weekLabels,
+            elem,
+            type: "bar"
+        };
+    }
+
+    function processData() {
+        let chartData = [];
+
+        for (let meal of data.mealSwipeTransactions) {
+            meal.type = getMeal(meal.date);
+        }
+
+        chartData[0] = createChartDataFromDictionary("meal-swipes-pie-chart", "pie", createDictionaryFromDataset(data.mealSwipeTransactions, "location", "swipes"));
+        chartData[1] = createChartDataFromDictionary("flex-dollars-pie-chart", "pie", createDictionaryFromDataset(data.flexTransactions.filter(t => t.amount < 0), "location", "amount"));
+        chartData[2] = createChartDataFromDictionary("debit-account-pie-chart", "pie", createDictionaryFromDataset(data.debitTransactions.filter(t => t.amount < 0), "location", "amount"))
+
+        chartData[3] = createChartDataFromDictionary("meal-types-pie-chart", "pie", createDictionaryFromDataset(data.mealSwipeTransactions, "type", "swipes"));
+
+        chartData[4] = makeDatasetsFromWeeklyData("meal-swipes-bar-chart", createWeeklyData(data.mealSwipeTransactions, "location", "swipes"));
+        chartData[5] = makeDatasetsFromWeeklyData("flex-dollars-bar-chart", createWeeklyData(data.flexTransactions.filter(t => t.amount < 0), "location", "amount"));
+        chartData[6] = makeDatasetsFromWeeklyData("debit-account-bar-chart", createWeeklyData(data.debitTransactions.filter(t => t.amount < 0), "location", "amount"));
+
+        chartData[7] = makeDatasetsFromWeeklyData("meal-types-bar-chart", createWeeklyData(data.mealSwipeTransactions, "type", "swipes"));
+
+        chartData[8] = createChartDataFromDictionary("breakfast-pie-chart", "pie", createDictionaryFromDataset(data.mealSwipeTransactions.filter(m => m.type === "Breakfast"), "location", "swipes"));
+        chartData[9] = createChartDataFromDictionary("brunch-pie-chart", "pie", createDictionaryFromDataset(data.mealSwipeTransactions.filter(m => m.type === "Brunch"), "location", "swipes"));
+        chartData[10] = createChartDataFromDictionary("lunch-pie-chart", "pie", createDictionaryFromDataset(data.mealSwipeTransactions.filter(m => m.type === "Lunch"), "location", "swipes"));
+        chartData[11] = createChartDataFromDictionary("dinner-pie-chart", "pie", createDictionaryFromDataset(data.mealSwipeTransactions.filter(m => m.type === "Dinner"), "location", "swipes"));
+
+
+        displayData(data, chartData);
+    }
+
+    function createDictionaryFromDataset(dataset, labelProp, valueProp) {
+        let dict = {};
+        for (let data of dataset) {
+            if (data[labelProp] in dict) {
+                dict[data[labelProp]] += +data[valueProp];
+            } else {
+                dict[data[labelProp]] = +data[valueProp];
+            }
+        }
+        return dict;
+    }
+
+    function createChartDataFromDictionary(elem, type, dict) {
+        return { elem, type, values: Object.values(dict), labels: Object.keys(dict) };
+    }
+
+    function displayData(transactionData, chartData) {
+        let overlay = document.createElement("div");
+        overlay.id = "overlay";
+        overlay.innerHTML = `
+        <div id="container">
+            <div>
+                <h1>Meal Swipes<a id="close-button" href="#">&times;</a></h1>
+                <p><strong>Total Swipes Used:</strong> ${transactionData.mealSwipeTransactions.map(t => +t.swipes).reduce((a, b) => a + b, 0)}</p>
+                <center><h3>Meal Swipes Used Per Location</h3></center>
+                <canvas id="meal-swipes-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Week Per Location</h3></center>
+                <canvas id="meal-swipes-bar-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Meal Type</h3></center>
+                <canvas id="meal-types-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Week Per Meal Type</h3></center>
+                <canvas id="meal-types-bar-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Week Per Location At Breakfast</h3></center>
+                <canvas id="breakfast-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Week Per Location At Brunch</h3></center>
+                <canvas id="brunch-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Week Per Location At Lunch</h3></center>
+                <canvas id="lunch-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Meal Swipes Used Per Week Per Location At Dinner</h3></center>
+                <canvas id="dinner-pie-chart" width="3" height="1"></canvas>
+            </div>
+            <div>
+                <h1>Flex Dollars</h1>
+                <p><strong>Total Flex Dollars Spent:</strong> ${transactionData.flexTransactions.filter(t => t.amount < 0).map(t => +t.amount).reduce((a, b) => a + b, 0).toFixed(2)}</p>
+                <center><h3>Flex Dollars Spent Per Location</h3></center>
+                <canvas id="flex-dollars-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Flex Dollars Spent Per Week Per Location</h3></center>
+                <canvas id="flex-dollars-bar-chart" width="3" height="1"></canvas>
+            </div>
+            <div>
+                <h1>Debit Account</h1>
+                <p><strong>Total Debit Spent:</strong> ${transactionData.debitTransactions.filter(t => t.amount < 0).map(t => +t.amount).reduce((a, b) => a + b, 0).toFixed(2)}</p>
+                <center><h3>Debit Spent Per Location</h3></center>
+                <canvas id="debit-account-pie-chart" width="3" height="1"></canvas>
+                <center><h3>Debit Spent Per Week Per Location</h3></center>
+                <canvas id="debit-account-bar-chart" width="3" height="1"></canvas>
+            </div>
+        </div>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById("close-button").addEventListener("click", closeOverlay);
+
+        for (let key in chartData) {
+            let data = chartData[key];
+            switch (data.type) {
+                case "pie":
+                    createPieChart(data);
+                    break;
+                case "bar":
+                    createBarChart(data);
+                    break;
+            }
+        }
+    }
+
+    function createPieChart(pieChartData) {
+        return new Chart(document.getElementById(pieChartData.elem).getContext("2d"), {
+            type: "pie",
+            data: {
+                datasets: [{
+                    data: pieChartData.values,
+                    backgroundColor: ctx => chartColor(ctx.chart.id, ctx.dataIndex),
+                    hoverBackgroundColor: ctx => chartColor(ctx.chart.id, ctx.dataIndex)
+                }],
+                labels: pieChartData.labels
+            },
+            options: {
+                legend: {
+                    labels: {
+                        generateLabels: chart => {
+                            return chart.data.labels.map(function (label, i) {
+                                var meta = chart.getDatasetMeta(0);
+
+                                return {
+                                    text: label,
+                                    fillStyle: chartColor(chart.id, i),
+                                    strokeStyle: 'none',
+                                    lineWidth: '0',
+                                    hidden: isNaN(chart.data.datasets[0].data[i]) || meta.data[i].hidden,
+
+                                    // Extra data used for toggling the correct item
+                                    index: i
+                                };
+                            });
+                        }
+                    }
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function (tooltipItem, data) {
+                            //get the concerned dataset
+                            var dataset = data.datasets[tooltipItem.datasetIndex];
+                            //calculate the total of this data set
+                            var total = dataset.data.reduce(function (previousValue, currentValue, currentIndex, array) {
+                                return previousValue + currentValue;
+                            });
+                            //get the current items value
+                            var currentValue = dataset.data[tooltipItem.index];
+                            //calculate the precentage based on the total and current item, also this does a rough rounding to give a whole number
+                            var percentage = Math.floor(((currentValue / total) * 100) + 0.5);
+
+                            return `${data.labels[tooltipItem.index]}: ${currentValue} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function createBarChart(barChartData) {
+        return new Chart(document.getElementById(barChartData.elem).getContext("2d"), {
+            type: "bar",
+            data: barChartData,
+            options: {
+                scales: {
+                    xAxes: [{
+                        stacked: true
+                    }],
+                    yAxes: [{
+                        stacked: true,
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                },
+                legend: {
+                    labels: {
+                        generateLabels: chart => {
+                            let labels = Chart.defaults.global.legend.labels.generateLabels(chart);
+                            for (let i = 0; i < labels.length; i++) {
+                                labels[i].fillStyle = chartColor(chart.id % CHART_TYPES, i);
+                            }
+                            return labels;
+                        }
+                    }
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function (tooltipItem, data) {
+                            var dataset = data.datasets[tooltipItem.datasetIndex];
+                            var currentValue = dataset.data[tooltipItem.index];
+
+                            var total = data.datasets.map((d, i) => d.data[tooltipItem.index]).reduce((a, b) => a + b, 0);
+                            if (!Number.isInteger(total)) {
+                                total = total.toFixed(2);
+                            }
+
+                            return `${dataset.label}: ${currentValue} / ${total}`;
+                        },
+                        labelColor: function (tooltipItem, chart) {
+                            return { backgroundColor: chartColor(chart.id % CHART_TYPES, tooltipItem.datasetIndex) };
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function generateNewValues() {
+        const SAT_RANGE = 20;
+        const LIGHT_RANGE = 10;
+        let initialHue = Math.random() * 360;
+        let hueStep = Math.random() * 10 + 30;
+        let initialSaturation = Math.random() * SAT_RANGE;
+        let initialLightness = Math.random() * LIGHT_RANGE;
+        let satLightStep = Math.random() * 5 + 3;
+        return {
+            getH: i => initialHue + i * hueStep,
+            getS: i => ((initialSaturation + i * satLightStep) % SAT_RANGE) + 50,
+            getL: i => ((initialLightness + i * satLightStep) % LIGHT_RANGE) + 50
+        };
+    }
+
+    function chartColor(id, index) {
+        if (!(id in __chartColors)) {
+            __chartColors[id] = generateNewValues();
+        }
+        let c = __chartColors[id];
+        return getColor(c.getH(index), c.getS(index), c.getL(index));
+    }
+
+    function getColor(hue = Math.random() * 360, sat = 50 + 20 * Math.random(), light = 50 + 20 * Math.random()) {
+        return `hsl(${hue}, ${sat}%, ${light}%)`;
+    }
+
+    function getWeekDetails(date) {
+        let sunday = date;
+        sunday.setDate(sunday.getDate() - sunday.getDay());
+        sunday.setHours(0, 0, 0, 0);
+        let nextSaturday = new Date(sunday.valueOf());
+        nextSaturday.setDate(nextSaturday.getDate() + 6);
+        let nextSunday = new Date(sunday.valueOf());
+        nextSunday.setDate(nextSunday.getDate() + 7);
+
+        return {
+            previousSunday: sunday,
+            nextSaturday,
+            nextSunday,
+            description: `${sunday.toDateString()} to ${nextSaturday.toDateString()}`
+        };
+    }
+
+    function getMeal(date) {
+        if (date.getDay() % 6) { // Weekday
+            return date.getHours() >= 16 ? "Dinner" : (date.getHours() >= 10 ? "Lunch" : "Breakfast");
+        } else { // Weekend
+            return date.getHours() >= 16 ? "Dinner" : "Brunch";
+        }
+    }
+}

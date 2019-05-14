@@ -1,8 +1,5 @@
 log = (message) => console.log("[CCI] " + message);
 
-let debitTransactions = [];
-let mealSwipeTransactions = [];
-let flexTransactions = [];
 let mealPlanType = "Meal Plan";
 
 /**
@@ -34,16 +31,17 @@ function createElement(tag, classList, properties, children) {
 }
 
 class Cal1CardWidget {
-    constructor({ debitBalance = '', debitSummary = '', flexBalance = '', flexSummary = '', mealPlanName = '', mealBalance = '', mealSummary = '', usedSwipes = '', usedFlex = '', usedDebit = '' } = {}) {
+    constructor({ debitBalance = '', debitSummary = '', flexBalance = '', flexSummary = '', mealPlanName = '', mealBalance = '', mealSummary = '', usedSwipes = '', usedFlex = '', usedDebit = '', mealSwipeTransactions = [], flexTransactions = [], debitTransactions = [] } = {}) {
         let sunday = new Date();
         sunday.setDate(sunday.getDate() - sunday.getDay());
         sunday.setHours(0, 0, 0, 0);
         this.element = document.createElement("div");
-        this.element.innerHTML = `<div class="cc-cal1card cc-widget"><div class="cc-cal1card-logo cc-widget-title"><h2 class="cc-left">Cal 1 Card</h2><a class="cc-right cc-button cc-widget-title-button ng-scope" target="_blank" href="http://cal1card.berkeley.edu">Manage Card</a></div><div data-cc-spinner-directive><ul class="cc-widget-list"><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>Debit Account Balance</strong></div><span class="cc-left cc-cal1card-amount">$${debitBalance}</span><div id="debit-link" class="cc-right"><abbr id="debit-summary">${usedDebit} this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=c1c" target="_blank">View Debit Transactions</a></div></div></li><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>Flex Dollars Balance</strong></div><span class="cc-left cc-cal1card-amount">$${flexBalance}</span><div id="flex-link" class="cc-right"><abbr id="flex-summary">${usedFlex} this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=50" target="_blank">View Flex Dollar Transactions</a></div></div></li><li class="cc-clearfix-container"><div><div class="cc-cal1card-header"><strong>${mealPlanName} Balance</strong></div><span class="cc-left cc-cal1card-amount">${mealBalance} <span style="font-size:12px">swipes</span></span><div id="meal-link" class="cc-right"><abbr id="meal-summary">${usedSwipes} swipes used this week</abbr><br><a href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=rb" target="_blank">View Meal Swipe History</a></div></div></li><li><a style="margin-bottom:-10px;margin-top:-5px;" href="https://services.housing.berkeley.edu/c1c/dyn/bals.asp?pln=Full" target="_blank">View all transactions in the last 365 days </a></li></ul></div></div>`;
+        this.element.innerHTML = createFromTemplate(debitBalance, flexBalance, mealPlanName, mealBalance, usedSwipes, usedFlex, usedDebit, mealSwipeTransactions, flexTransactions, debitTransactions);
         this.element = this.element.firstElementChild;
         this.element.querySelector("#debit-summary").title = debitSummary;
         this.element.querySelector("#flex-summary").title = flexSummary;
         this.element.querySelector("#meal-summary").title = mealSummary;
+        this.element.querySelector("#open-overlay-button").addEventListener("click", f => showOverlay({ mealSwipeTransactions, flexTransactions, debitTransactions }));
     }
 
     static createEmpty() {
@@ -129,64 +127,7 @@ async function finances(runAgain = true) {
             }
         }
 
-        let section = 0;
-
-        for (let row of table.children) {
-            switch (section) {
-                case 0:
-                    if (row.textContent.match("Debit")) {
-                        section = 1;
-                    }
-                    break;
-                case 1:
-                    if (row.textContent.match("Meal")) {
-                        section = 2;
-                        mealPlanType = row.textContent.replace(" Activity", "");
-                        break;
-                    }
-                    if (row.firstElementChild.tagName == "TH") break;
-                    try {
-                        debitTransactions.push({
-                            date: new Date(Date.parse(row.children[0].textContent)),
-                            amount: (() => {
-                                let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
-                            })(),
-                            balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
-                            location: row.children[3].textContent
-                        });
-                    } catch (e) { console.warn("Caught error: %o", e) }
-                    break;
-                case 2:
-                    if (row.textContent.match("Flex")) {
-                        section = 3;
-                        break;
-                    }
-                    if (row.firstElementChild.tagName == "TH") break;
-                    try {
-                        mealSwipeTransactions.push({
-                            date: new Date(Date.parse(row.children[0].textContent)),
-                            swipes: +row.children[1].textContent,
-                            location: row.children[3].textContent
-                        });
-                    } catch (e) { console.warn("Caught error: %o", e) }
-                    break;
-                case 3:
-                    if (row.firstElementChild.tagName == "TH") break;
-                    try {
-                        flexTransactions.push({
-                            date: new Date(Date.parse(row.children[0].textContent)),
-                            amount: (() => {
-                                let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
-                                return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
-                            })(),
-                            balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
-                            location: row.children[3].textContent
-                        });
-                    } catch (e) { console.warn("Caught error: %o", e) }
-                    break;
-            }
-        }
+        let { mealSwipeTransactions, flexTransactions, debitTransactions } = loadData(table);
 
         let sunday = new Date();
         sunday.setDate(sunday.getDate() - sunday.getDay());
@@ -210,7 +151,10 @@ async function finances(runAgain = true) {
             debitSummary: debitTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}:\n`),
             usedDebit: `${debitThisWeek > 0 ? '+' : '-'}$${Math.abs(debitThisWeek).toFixed(2)}`,
             flexSummary: flexTransactions.filter(x => x.date > sunday).reverse().reduce((a, b) => a + `${getPrettyDateTimeString(b.date)}: ${Number.parseFloat(b.amount) > 0 ? '+' : '-'}$${Math.abs(b.amount).toFixed(2)} @ ${b.location}\n`, `Week of ${sunday.getMonth() + 1}/${sunday.getDate()} to ${nextSaturday.getMonth() + 1}/${nextSaturday.getDate()}:\n`),
-            usedFlex: `${flexThisWeek > 0 ? '+' : '-'}$${Math.abs(flexThisWeek).toFixed(2)}`
+            usedFlex: `${flexThisWeek > 0 ? '+' : '-'}$${Math.abs(flexThisWeek).toFixed(2)}`,
+            mealSwipeTransactions,
+            flexTransactions,
+            debitTransactions
         });
 
         let col = document.querySelector("#cc-main-content > div.cc-clearfix-container.ng-scope > div > div > div.medium-6.large-4.columns.ng-scope");
@@ -242,4 +186,91 @@ function getMeal(date) {
 
 function getPrettyDateTimeString(date) {
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours() == 12 ? 12 : date.getHours() % 12}:${date.getMinutes() < 10 ? "0" : ""}${date.getMinutes()} ${date.getHours() / 12 >= 1 ? "PM" : "AM"}`;
+}
+
+/**
+ * Removes " 2" and " S2" from end of string
+ * @param {string} text Input string to clean
+ */
+function clean(text) {
+    if (text === "Crossroad S2") {
+        return "Crossroads";
+    } else if (text.endsWith(" 2")) {
+        return text.substring(0, text.length - 2);
+    } else if (text.endsWith(" S2")) {
+        return text.substring(0, text.length - 3);
+    }
+
+    return text;
+}
+
+function loadData(table) {
+    debitTransactions = [];
+    mealSwipeTransactions = [];
+    flexTransactions = [];
+
+    let section = 0;
+
+    for (let row of table.children) {
+        switch (section) {
+            case 0:
+                if (row.textContent.match("Debit")) {
+                    section = 1;
+                }
+                break;
+            case 1:
+                if (row.textContent.match("Meal")) {
+                    section = 2;
+                    mealPlanType = row.textContent.replace(" Activity", "");
+                    break;
+                }
+                if (row.firstElementChild.tagName == "TH") break;
+                try {
+                    debitTransactions.push({
+                        date: new Date(Date.parse(row.children[0].textContent)),
+                        amount: (() => {
+                            let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
+                            return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
+                        })(),
+                        balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
+                        location: clean(row.children[3].textContent)
+                    });
+                } catch (e) { console.warn("Caught error: %o", e) }
+                break;
+            case 2:
+                if (row.textContent.match("Flex")) {
+                    section = 3;
+                    break;
+                }
+                if (row.firstElementChild.tagName == "TH") break;
+                try {
+                    mealSwipeTransactions.push({
+                        date: new Date(Date.parse(row.children[0].textContent)),
+                        swipes: +row.children[1].textContent,
+                        location: clean(row.children[3].textContent)
+                    });
+                } catch (e) { console.warn("Caught error: %o", e) }
+                break;
+            case 3:
+                if (row.firstElementChild.tagName == "TH") break;
+                try {
+                    flexTransactions.push({
+                        date: new Date(Date.parse(row.children[0].textContent)),
+                        amount: (() => {
+                            let result = row.children[1].textContent.match(/(\(?)\$(\d+\.\d\d)/);
+                            return (result[2] * (result[1] ? 1 : -1)).toFixed(2);
+                        })(),
+                        balance: row.children[2].textContent.match(/(\(?)\$(\d+\.\d\d)/)[2],
+                        location: clean(row.children[3].textContent)
+                    });
+                } catch (e) { console.warn("Caught error: %o", e) }
+                break;
+        }
+    }
+
+    return {
+        mealSwipeTransactions,
+        flexTransactions,
+        debitTransactions
+    };
 }
